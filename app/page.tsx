@@ -115,7 +115,7 @@ const brands = [
 ];
 
 export default function PrakashGroupPortal() {
-  const [dark, setDark] = useState(false);
+  const [dark] = useState(false);
   const [showContact, setShowContact] = useState(false);
   const [contact, setContact] = useState({ name: '', phone: '', message: '' });
   const [contactStatus, setContactStatus] = useState('');
@@ -385,17 +385,16 @@ export default function PrakashGroupPortal() {
   }
 
   return (
-    <div className={(dark ? 'min-h-screen bg-gray-900 text-white' : 'min-h-screen bg-gray-50 text-gray-900') + ' p-8'}>
+    <div className="min-h-screen bg-slate-900 text-slate-100 p-8">
       <nav className="max-w-5xl mx-auto flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="text-lg font-semibold">Prakash Group</div>
           <span className="text-sm text-gray-500 dark:text-gray-400">Trusted since 1990</span>
         </div>
         <div className="flex items-center gap-3">
-          <a href="#brands" className="text-sm text-gray-700 dark:text-gray-300 border px-3 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">Brands</a>
-          <button onClick={() => setShowCareers(true)} className="text-sm text-gray-700 dark:text-gray-300 border px-3 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">Careers</button>
-          <a href="mailto:swati.das1506@gmail.com" className="text-sm text-white bg-indigo-600 px-3 py-1 rounded-md hover:bg-indigo-700">Contact</a>
-          <button aria-pressed={dark} onClick={() => setDark((s) => !s)} className="ml-2 px-3 py-1 rounded-md border bg-white/80 dark:bg-gray-800 text-sm">{dark ? 'Light' : 'Dark'}</button>
+          <a href="#brands" className="text-sm font-semibold text-white relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full after:bg-[#C9A24D]">Brands</a>
+          <button onClick={() => setShowCareers(true)} className="text-sm font-semibold text-white relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full after:bg-[#C9A24D]">Careers</button>
+          <a href="mailto:swati.das1506@gmail.com" className="text-sm font-semibold text-white relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full after:bg-[#C9A24D]">Contact</a>
         </div>
       </nav>
 
@@ -434,29 +433,29 @@ export default function PrakashGroupPortal() {
             {/* Contact form modal */}
             {showContact && (
               <div className="fixed inset-0 z-50 flex items-center justify-center">
-                <div className="fixed inset-0 bg-black/40" onClick={closeContact} aria-hidden="true" />
-                <div role="dialog" aria-modal="true" aria-labelledby="contact-title" className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 z-10">
-                  <button onClick={closeContact} aria-label="Close" className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">✕</button>
-                  <h3 id="contact-title" className="text-lg font-semibold mb-3">Send a query to our support team</h3>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={closeContact} aria-hidden="true" />
+                <div role="dialog" aria-modal="true" aria-labelledby="contact-title" className="relative bg-white text-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-8 z-10 max-h-[90vh] overflow-y-auto">
+                  <button onClick={closeContact} aria-label="Close" className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 text-lg">✕</button>
+                  <h3 id="contact-title" className="text-2xl font-bold mb-6 text-gray-900">Send a query to our support team</h3>
                   <form onSubmit={handleContactSubmit} className="space-y-3">
                     <div>
                       <label className="block text-sm mb-1">Full name <span className="text-red-500">*</span></label>
-                      <input ref={firstInputRef} name="name" value={contact.name} onChange={handleContactChange} aria-required="true" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <input ref={firstInputRef} name="name" value={contact.name} onChange={handleContactChange} aria-required="true" className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                       {contactErrors.name && <div className="text-sm text-red-500 mt-1">{contactErrors.name}</div>}
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Phone number <span className="text-red-500">*</span></label>
-                      <input name="phone" value={contact.phone} onChange={handleContactChange} aria-required="true" pattern="[0-9+\- ]{7,15}" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <input name="phone" value={contact.phone} onChange={handleContactChange} aria-required="true" pattern="[0-9+\- ]{7,15}" className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                       {contactErrors.phone && <div className="text-sm text-red-500 mt-1">{contactErrors.phone}</div>}
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Message <span className="text-red-500">*</span></label>
-                      <textarea name="message" value={contact.message} onChange={handleContactChange} aria-required="true" rows={4} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <textarea name="message" value={contact.message} onChange={handleContactChange} aria-required="true" rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                       {contactErrors.message && <div className="text-sm text-red-500 mt-1">{contactErrors.message}</div>}
                     </div>
                     <div className="flex items-center gap-3">
-                      <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md">Send to support</button>
-                      <button type="button" onClick={closeContact} className="px-4 py-2 border rounded-md">Cancel</button>
+                      <button type="submit" className="px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-800 transition">Send to support</button>
+                      <button type="button" onClick={closeContact} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition">Cancel</button>
                       <div className="text-sm text-gray-500">We will reach out within 48 hours.</div>
                     </div>
                   </form>
@@ -473,37 +472,48 @@ export default function PrakashGroupPortal() {
             {/* Careers modal */}
             {showCareers && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="fixed inset-0 bg-black/40" onClick={closeCareers} aria-hidden="true" />
-                <div role="dialog" aria-modal="true" aria-labelledby="careers-title" className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 z-10 max-h-[90vh] overflow-y-auto">
-                  <button onClick={closeCareers} aria-label="Close" className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">✕</button>
-                  <h3 id="careers-title" className="text-lg font-semibold mb-3">Apply — Upload your CV / Resume</h3>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={closeCareers} aria-hidden="true" />
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="careers-title"
+                  className="relative bg-white text-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-8 z-10 max-h-[90vh] overflow-y-auto"
+                >
+                  <button
+                      onClick={closeCareers}
+                      aria-label="Close"
+                      className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 text-lg"
+                    >
+                      ✕
+                    </button>
+                  <h3 id="careers-title" className="text-2xl font-bold mb-6 text-gray-900">Apply — Upload your CV / Resume</h3>
                   <form onSubmit={handleCareerSubmit} className="space-y-3">
                     <div>
                       <label className="block text-sm mb-1">Full name <span className="text-red-500">*</span></label>
-                      <input name="name" value={careerForm.name} onChange={handleCareerChange} aria-required="true" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <input name="name" value={careerForm.name} onChange={handleCareerChange} aria-required="true" className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                       {careerErrors.name && <div className="text-sm text-red-500 mt-1">{careerErrors.name}</div>}
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Email <span className="text-red-500">*</span></label>
-                      <input name="email" value={careerForm.email} onChange={handleCareerChange} aria-required="true" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <input name="email" value={careerForm.email} onChange={handleCareerChange} aria-required="true" className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                       {careerErrors.email && <div className="text-sm text-red-500 mt-1">{careerErrors.email}</div>}
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Phone</label>
-                      <input name="phone" value={careerForm.phone} onChange={handleCareerChange} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <input name="phone" value={careerForm.phone} onChange={handleCareerChange} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Position (optional)</label>
-                      <input name="position" value={careerForm.position} onChange={handleCareerChange} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <input name="position" value={careerForm.position} onChange={handleCareerChange} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Message (optional)</label>
-                      <textarea name="message" value={careerForm.message} onChange={handleCareerChange} rows={3} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      <textarea name="message" value={careerForm.message} onChange={handleCareerChange} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-[#C9A24D] focus:outline-none" />
                     </div>
                     <div>
                       <label className="block text-sm mb-1">CV / Resume <span className="text-red-500">*</span></label>
                       <div className="mt-2 flex items-start gap-3">
-                        <label htmlFor="career-file" className="inline-flex items-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                        <label htmlFor="career-file" className="inline-flex items-center gap-2 px-4 py-2 border-2 border-dashed border-[#C9A24D] rounded-md cursor-pointer text-[#C9A24D] bg-[#C9A24D]/5 hover:bg-[#C9A24D]/10 transition">
                           <span className="text-sm font-medium">{careerFile ? careerFile.name : 'Upload CV / Resume'}</span>
                           <input
                             id="career-file"
@@ -528,12 +538,12 @@ export default function PrakashGroupPortal() {
                       {careerErrors.file && <div className="text-sm text-red-500 mt-1">{careerErrors.file}</div>}
                     </div>
                     <div className="flex items-center gap-3">
-                      <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md">Submit application</button>
-                      <button type="button" onClick={closeCareers} className="px-4 py-2 border rounded-md">Cancel</button>
+                      <button type="submit" className="px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-800 transition">Submit application</button>
+                      <button type="button" onClick={closeCareers} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition">Cancel</button>
                       <div className="text-sm text-gray-500">Max file size 10MB. Any file type accepted.</div>
                     </div>
                   </form>
-                  {careerProgress !== null && <div className="mt-3 h-2 bg-gray-200 rounded overflow-hidden"><div style={{ width: `${careerProgress}%` }} className="h-2 bg-indigo-600" /></div>}
+                  {careerProgress !== null && <div className="mt-3 h-2 bg-gray-200 rounded overflow-hidden"><div style={{ width: `${careerProgress}%` }} className="h-2 bg-[#C9A24D]" /></div>}
                   {careerStatus && <div className="mt-3 text-sm text-green-500">{careerStatus}</div>}
                 </div>
               </div>
@@ -547,14 +557,36 @@ export default function PrakashGroupPortal() {
       </div>
       <div id="brands" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {brands.map((brand) => (
-          <Card key={brand.name} className={(dark ? 'bg-gray-800 text-white' : 'bg-white') + ' rounded-2xl shadow-md hover:shadow-lg transition-transform duration-200 transform hover:-translate-y-1 hover:scale-[1.02] overflow-hidden'}>
+          <Card
+              key={brand.name}
+              className="
+                bg-white
+                text-gray-900
+                rounded-2xl
+                border border-gray-200
+                shadow-lg
+                hover:shadow-2xl
+                transform hover:-translate-y-1 hover:scale-[1.02]
+                transition-all duration-300
+                overflow-hidden
+              "
+            >
             <div className="h-1 w-full bg-gradient-to-r from-sky-500 to-indigo-600" />
             <CardContent className="p-6">
-              <div className={(dark ? 'bg-gray-800' : 'bg-gray-50') + ' flex items-center justify-center h-20 w-full rounded-md p-3 mb-4'} role="img" aria-label={brand.name}>
+              <div
+                  className="
+                    flex items-center justify-center
+                    h-28 w-full mb-4
+                    rounded-xl
+                    bg-white
+                    border border-gray-200
+                    shadow-inner
+                  "
+                >
                 <img
                   src={brand.logo}
                   alt={brand.name}
-                  className="max-h-12 w-auto mx-auto object-contain"
+                  className="h-14 max-w-[170px] object-contain drop-shadow-sm"
                   onError={(e) => {
                     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='80'><rect width='100%' height='100%' fill='${dark ? '#374151' : '#f3f4f6'}'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='${dark ? '#f9fafb' : '#111827'}' font-family='Arial, sans-serif' font-size='14'>${brand.name.split(' ')[0]}</text></svg>`;
                     (e.currentTarget as HTMLImageElement).onerror = null;
