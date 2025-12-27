@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import MapPin from '@/components/icons/MapPin';
 
@@ -56,7 +56,7 @@ const brands = [
   },
   {
     name: "Pulse (Aqua Industry)",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/a/ac/Water_drop.svg",
+    logo: "/logos/pulse.png",
     locations: [
       {
         city: "Pulse JJS Aqua Pulse Water Plant",
@@ -116,44 +116,360 @@ const brands = [
 
 export default function PrakashGroupPortal() {
   const [dark, setDark] = useState(false);
+  const [showContact, setShowContact] = useState(false);
+  const [contact, setContact] = useState({ name: '', phone: '', message: '' });
+  const [contactStatus, setContactStatus] = useState('');
+  const [contactPreviewUrl, setContactPreviewUrl] = useState<string | null>(null);
+  const [contactErrors, setContactErrors] = useState({ name: '', phone: '', message: '' });
+
+  // Careers/upload state
+  const [showCareers, setShowCareers] = useState(false);
+  const [careerForm, setCareerForm] = useState({ name: '', email: '', phone: '', position: '', message: '' });
+  const [careerFile, setCareerFile] = useState<File | null>(null);
+  const [careerProgress, setCareerProgress] = useState<number | null>(null);
+  const [careerStatus, setCareerStatus] = useState<string | null>(null);
+  const [careerErrors, setCareerErrors] = useState({ name: '', email: '', file: '' });
+
+  const contactButtonRef = useRef<HTMLButtonElement | null>(null);
+  const firstInputRef = useRef<HTMLInputElement | null>(null);
+  const careerFileRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (showContact) {
+      // small timeout so the input is available in DOM
+      setTimeout(() => firstInputRef.current?.focus(), 10);
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') closeContact();
+      };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    }
+  }, [showContact]);
+
+  function validateContact() {
+    const errs = { name: '', phone: '', message: '' };
+    if (!contact.name.trim()) errs.name = 'Name is required.';
+    if (!contact.phone.trim()) errs.phone = 'Phone is required.';
+    else if (!/^[0-9+\- ]{7,15}$/.test(contact.phone)) errs.phone = 'Enter a valid phone number.';
+    if (!contact.message.trim()) errs.message = 'Message is required.';
+    setContactErrors(errs);
+    return !errs.name && !errs.phone && !errs.message;
+  }
+
+  function validateCareer() {
+    const errs = { name: '', email: '', file: '' };
+    if (!careerForm.name.trim()) errs.name = 'Name is required.';
+    if (!careerForm.email.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(careerForm.email)) errs.email = 'Valid email is required.';
+    if (!careerFile) errs.file = 'CV/Resume is required.';
+    setCareerErrors(errs);
+    return !errs.name && !errs.email && !errs.file;
+  }
+
+  function handleContactChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target;
+    setContact((s) => ({ ...s, [name]: value }));
+    setContactErrors((s) => ({ ...s, [name]: '' }));
+  }
+
+  function closeContact() {
+    setShowContact(false);
+    contactButtonRef.current?.focus();
+  }
+
+  function closeCareers() {
+    setShowCareers(false);
+    if (careerFileRef.current) careerFileRef.current.value = '';
+  }
+
+  function handleCareerChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target as HTMLInputElement;
+    setCareerForm((s) => ({ ...s, [name]: value }));
+    setCareerErrors((s) => ({ ...s, [name]: '' }));
+  }
+
+  function handleCareerFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+    setCareerFile(f);
+    setCareerErrors((s) => ({ ...s, file: '' }));
+  }
+
+  async function handleCareerSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validateCareer()) return;
+
+    const file = careerFile;
+    if (!file) return;
+
+    // limit 10 MB
+    const MAX = 10 * 1024 * 1024;
+    if (file.size > MAX) {
+      setCareerErrors((s) => ({ ...s, file: 'File too large (max 10MB).' }));
+      return;
+    }
+
+    setCareerProgress(0);
+    setCareerStatus('Preparing upload...');
+
+    try {
+      // 1) request presigned PUT URL
+      const presignRes = await fetch('/api/careers/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream' }),
+      });
+      const presignJson = await presignRes.json();
+      if (!presignRes.ok || !presignJson.url || !presignJson.key) {
+        setCareerStatus('Upload failed (presign).');
+        setCareerProgress(null);
+        return;
+      }
+
+      setCareerStatus('Uploading file...');
+
+      // 2) PUT file to S3
+      const putRes = await fetch(presignJson.url, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+
+      if (!putRes.ok) {
+        setCareerStatus('Upload failed (PUT).');
+        setCareerProgress(null);
+        return;
+      }
+
+      setCareerProgress(100);
+      setCareerStatus('Saving application...');
+
+      // 3) notify server with metadata including file key / fileUrl
+      const submitRes = await fetch('/api/careers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...careerForm, fileKey: presignJson.key, fileUrl: presignJson.fileUrl }),
+      });
+      const submitJson = await submitRes.json().catch(() => ({}));
+
+      if (submitRes.ok) {
+        setCareerStatus(submitJson.previewUrl ? 'Application sent (preview).' : 'Application submitted.');
+        setTimeout(() => {
+          setCareerForm({ name: '', email: '', phone: '', position: '', message: '' });
+          setCareerFile(null);
+          closeCareers();
+          setCareerProgress(null);
+        }, 1800);
+        return;
+      }
+
+      setCareerStatus(submitJson && submitJson.error ? `Error: ${submitJson.error}` : 'Error submitting application.');
+      setCareerProgress(null);
+    } catch (err) {
+      console.error('Career upload error', err);
+      setCareerStatus('Network error. Please try again.');
+      setCareerProgress(null);
+    }
+  }
+
+  async function handleContactSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validateContact()) return;
+
+    setContactStatus('Sending...');
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contact),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        setContactStatus('Message sent. We will reach out within 48 hours.');
+        if (json && json.previewUrl) {
+          setContactPreviewUrl(json.previewUrl);
+          setContactStatus('Message sent (preview available).');
+        }
+        setTimeout(() => {
+          setContact({ name: '', phone: '', message: '' });
+          setShowContact(false);
+        }, 2000);
+        return;
+      }
+
+      // If server indicates SMTP not configured, fallback to mailto
+      if (json && json.error && json.error.toLowerCase().includes('smtp')) {
+        const subject = encodeURIComponent(`Support request from ${contact.name}`);
+        const body = encodeURIComponent(`Name: ${contact.name}\nPhone: ${contact.phone}\n\nMessage:\n${contact.message}`);
+        const mailto = `mailto:swati.das1506@gmail.com?subject=${subject}&body=${body}`;
+        window.location.href = mailto;
+        setContactStatus('SMTP not configured. Prepared message in your email client.');
+        setTimeout(() => setShowContact(false), 2000);
+        return;
+      }
+
+      setContactStatus(json && json.error ? `Error: ${json.error}` : 'Error sending message.');
+    } catch (err) {
+      // network or other error — fallback to mailto
+      const subject = encodeURIComponent(`Support request from ${contact.name}`);
+      const body = encodeURIComponent(`Name: ${contact.name}\nPhone: ${contact.phone}\n\nMessage:\n${contact.message}`);
+      const mailto = `mailto:swati.das1506@gmail.com?subject=${subject}&body=${body}`;
+      window.location.href = mailto;
+      setContactStatus('Network error. Prepared message in your email client.');
+      setTimeout(() => setShowContact(false), 2000);
+    }
+  }
 
   return (
     <div className={(dark ? 'min-h-screen bg-gray-900 text-white' : 'min-h-screen bg-gray-50 text-gray-900') + ' p-8'}>
-      <div className="flex items-center justify-between max-w-5xl mx-auto mb-6">
-        <h1 className="text-4xl font-bold text-center mx-auto">Prakash Group</h1>
-        <button
-          aria-pressed={dark}
-          onClick={() => setDark((s) => !s)}
-          className="ml-4 px-3 py-1 rounded-md border bg-white/80 dark:bg-gray-800 text-sm"
-        >
-          {dark ? 'Light' : 'Dark'}
-        </button>
-      </div>
+      <nav className="max-w-5xl mx-auto flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="text-lg font-semibold">Prakash Group</div>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Trusted since 1990</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <a href="#brands" className="text-sm text-gray-700 dark:text-gray-300 border px-3 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">Brands</a>
+          <button onClick={() => setShowCareers(true)} className="text-sm text-gray-700 dark:text-gray-300 border px-3 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">Careers</button>
+          <a href="mailto:swati.das1506@gmail.com" className="text-sm text-white bg-indigo-600 px-3 py-1 rounded-md hover:bg-indigo-700">Contact</a>
+          <button aria-pressed={dark} onClick={() => setDark((s) => !s)} className="ml-2 px-3 py-1 rounded-md border bg-white/80 dark:bg-gray-800 text-sm">{dark ? 'Light' : 'Dark'}</button>
+        </div>
+      </nav>
 
-      <div className="max-w-5xl mx-auto mb-12 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-        <div className="md:col-span-1 flex justify-center">
-          <img src="/md-vijay-prakash.png" alt="Mr. Vijay Prakash" className="rounded-2xl shadow-lg w-60" />
+      <div className="max-w-5xl mx-auto mb-12 relative">
+        <svg className="pointer-events-none absolute -top-8 -right-24 opacity-20 w-48 h-48" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g1" x1="0%" x2="100%">
+              <stop offset="0%" stopColor="#a78bfa" />
+              <stop offset="100%" stopColor="#fb7185" />
+            </linearGradient>
+          </defs>
+          <circle cx="80" cy="70" r="80" fill="url(#g1)" />
+        </svg>
+
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex-1">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">Prakash Group</h1>
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 max-w-2xl">Authorized dealerships and trusted services across automobiles, mobility, jewellery, eyewear and packaged water — delivering consistent value to our customers in Bihar.</p>
+            <ul className="mt-4 text-sm text-gray-500 dark:text-gray-400 list-disc list-inside max-w-2xl">
+              <li>Authorized national and international brands</li>
+              <li>Transparent pricing and trusted service</li>
+              <li>Local support across multiple cities</li>
+            </ul>
+            <div className="mt-6 flex gap-3">
+              <a href="#brands" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 transition">Explore Brands</a>
+              <button
+                type="button"
+                ref={contactButtonRef}
+                onClick={() => setShowContact(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 border rounded-md text-indigo-600 bg-white/90 hover:bg-white transition"
+              >
+                Get in touch
+              </button>
+            </div>
+
+            {/* Contact form modal */}
+            {showContact && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black/40" onClick={closeContact} aria-hidden="true" />
+                <div role="dialog" aria-modal="true" aria-labelledby="contact-title" className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 z-10">
+                  <button onClick={closeContact} aria-label="Close" className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">✕</button>
+                  <h3 id="contact-title" className="text-lg font-semibold mb-3">Send a query to our support team</h3>
+                  <form onSubmit={handleContactSubmit} className="space-y-3">
+                    <div>
+                      <label className="block text-sm mb-1">Full name <span className="text-red-500">*</span></label>
+                      <input ref={firstInputRef} name="name" value={contact.name} onChange={handleContactChange} aria-required="true" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      {contactErrors.name && <div className="text-sm text-red-500 mt-1">{contactErrors.name}</div>}
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Phone number <span className="text-red-500">*</span></label>
+                      <input name="phone" value={contact.phone} onChange={handleContactChange} aria-required="true" pattern="[0-9+\- ]{7,15}" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      {contactErrors.phone && <div className="text-sm text-red-500 mt-1">{contactErrors.phone}</div>}
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Message <span className="text-red-500">*</span></label>
+                      <textarea name="message" value={contact.message} onChange={handleContactChange} aria-required="true" rows={4} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      {contactErrors.message && <div className="text-sm text-red-500 mt-1">{contactErrors.message}</div>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md">Send to support</button>
+                      <button type="button" onClick={closeContact} className="px-4 py-2 border rounded-md">Cancel</button>
+                      <div className="text-sm text-gray-500">We will reach out within 48 hours.</div>
+                    </div>
+                  </form>
+                  {contactStatus && <div className="mt-3 text-sm text-green-500">{contactStatus}</div>}
+                  {contactPreviewUrl && (
+                    <div className="mt-2 text-sm">
+                      <a href={contactPreviewUrl} target="_blank" rel="noreferrer" className="text-indigo-600">Open email preview</a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Careers modal */}
+            {showCareers && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black/40" onClick={closeCareers} aria-hidden="true" />
+                <div role="dialog" aria-modal="true" aria-labelledby="careers-title" className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 z-10">
+                  <button onClick={closeCareers} aria-label="Close" className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">✕</button>
+                  <h3 id="careers-title" className="text-lg font-semibold mb-3">Apply — Upload your CV / Resume</h3>
+                  <form onSubmit={handleCareerSubmit} className="space-y-3">
+                    <div>
+                      <label className="block text-sm mb-1">Full name <span className="text-red-500">*</span></label>
+                      <input name="name" value={careerForm.name} onChange={handleCareerChange} aria-required="true" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      {careerErrors.name && <div className="text-sm text-red-500 mt-1">{careerErrors.name}</div>}
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Email <span className="text-red-500">*</span></label>
+                      <input name="email" value={careerForm.email} onChange={handleCareerChange} aria-required="true" className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                      {careerErrors.email && <div className="text-sm text-red-500 mt-1">{careerErrors.email}</div>}
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Phone</label>
+                      <input name="phone" value={careerForm.phone} onChange={handleCareerChange} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Position (optional)</label>
+                      <input name="position" value={careerForm.position} onChange={handleCareerChange} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Message (optional)</label>
+                      <textarea name="message" value={careerForm.message} onChange={handleCareerChange} rows={3} className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700" />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">CV / Resume <span className="text-red-500">*</span></label>
+                      <input ref={careerFileRef} type="file" onChange={handleCareerFile} className="w-full" />
+                      {careerErrors.file && <div className="text-sm text-red-500 mt-1">{careerErrors.file}</div>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md">Submit application</button>
+                      <button type="button" onClick={closeCareers} className="px-4 py-2 border rounded-md">Cancel</button>
+                      <div className="text-sm text-gray-500">Max file size 10MB. Any file type accepted.</div>
+                    </div>
+                  </form>
+                  {careerProgress !== null && <div className="mt-3 h-2 bg-gray-200 rounded overflow-hidden"><div style={{ width: `${careerProgress}%` }} className="h-2 bg-indigo-600" /></div>}
+                  {careerStatus && <div className="mt-3 text-sm text-green-500">{careerStatus}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="w-60 hidden md:block">
+            <img src="/md-vijay-prakash.png" alt="Mr. Vijay Prakash" className="rounded-2xl shadow-lg w-full" />
+          </div>
         </div>
-        <div className="md:col-span-2">
-          <h2 className="text-2xl font-semibold mb-2">Mr. Vijay Prakash</h2>
-          <p className="text-gray-600 font-medium mb-3">Managing Director – Prakash Group</p>
-          <p className="text-gray-700 leading-relaxed">
-            Under the visionary leadership of Mr. Vijay Prakash, Prakash Group has grown into a trusted and diversified business house with a strong presence across Bihar. His commitment to ethical business practices, customer-centricity, and long-term value creation has been the driving force behind the group’s steady expansion across multiple industries.
-          </p>
-        </div>
+        <p className="text-center text-gray-600 dark:text-gray-300 max-w-4xl mx-auto mt-8">Built on the pillars of trust, excellence and customer satisfaction, Prakash Group proudly represents leading national brands and delivers quality products and services to thousands of customers every year.</p>
       </div>
-      <p className="text-center text-gray-600 max-w-4xl mx-auto mb-10">
-        Prakash Group is a diversified business group with an established presence across Bihar, operating authorised dealerships and ventures in automobiles, electric mobility, jewellery, eyewear, and packaged drinking water. Built on the pillars of trust, excellence, and customer satisfaction, the group proudly represents some of India’s most respected national brands, delivering quality products and services to thousands of customers every year.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div id="brands" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {brands.map((brand) => (
-          <Card key={brand.name} className={(dark ? 'bg-gray-800 text-white' : 'bg-white') + ' rounded-2xl shadow-md hover:shadow-lg transition'}>
+          <Card key={brand.name} className={(dark ? 'bg-gray-800 text-white' : 'bg-white') + ' rounded-2xl shadow-md hover:shadow-lg transition-transform duration-200 transform hover:-translate-y-1 hover:scale-[1.02] overflow-hidden'}>
+            <div className="h-1 w-full bg-gradient-to-r from-sky-500 to-indigo-600" />
             <CardContent className="p-6">
-              <div className={(dark ? 'bg-gray-700' : 'bg-gray-100') + ' flex items-center justify-center h-16 w-full rounded-md p-2 mb-4'} role="img" aria-label={brand.name}>
+              <div className={(dark ? 'bg-gray-800' : 'bg-gray-50') + ' flex items-center justify-center h-20 w-full rounded-md p-3 mb-4'} role="img" aria-label={brand.name}>
                 <img
                   src={brand.logo}
                   alt={brand.name}
-                  className="h-14 w-auto mx-auto object-contain"
+                  className="max-h-12 w-auto mx-auto object-contain"
                   onError={(e) => {
                     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='80'><rect width='100%' height='100%' fill='${dark ? '#374151' : '#f3f4f6'}'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='${dark ? '#f9fafb' : '#111827'}' font-family='Arial, sans-serif' font-size='14'>${brand.name.split(' ')[0]}</text></svg>`;
                     // @ts-ignore
@@ -176,7 +492,10 @@ export default function PrakashGroupPortal() {
           </Card>
         ))}
       </div>
-      <footer className="text-center text-sm text-gray-500 mt-16">© {new Date().getFullYear()} Prakash Group · Domain: prakashgroup.in</footer>
+      <footer className="text-center text-sm text-gray-500 mt-16 border-t pt-6">
+        <div>© {new Date().getFullYear()} Prakash Group</div>
+        <div className="mt-2"><a href="mailto:swati.das1506@gmail.com" className="text-indigo-600">swati.das1506@gmail.com</a> · <span className="text-gray-400">prakashgroup.in</span></div>
+      </footer>
     </div>
   );
 }
