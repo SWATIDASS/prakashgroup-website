@@ -16,7 +16,8 @@ export async function POST(req: Request) {
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
     if (!region || !bucket || !accessKeyId || !secretAccessKey) {
-      return NextResponse.json({ error: 'S3 not configured' }, { status: 500 });
+      // Indicate S3 is not configured so clients can fallback to an alternate upload flow
+      return NextResponse.json({ error: 'S3 not configured' }, { status: 501 });
     }
 
     const client = new S3Client({ region, credentials: { accessKeyId, secretAccessKey } });

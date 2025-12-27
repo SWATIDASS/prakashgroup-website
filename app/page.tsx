@@ -134,6 +134,11 @@ export default function PrakashGroupPortal() {
   const firstInputRef = useRef<HTMLInputElement | null>(null);
   const careerFileRef = useRef<HTMLInputElement | null>(null);
 
+  function closeContact() {
+    setShowContact(false);
+    contactButtonRef.current?.focus();
+  }
+
   useEffect(() => {
     if (showContact) {
       // small timeout so the input is available in DOM
@@ -146,8 +151,7 @@ export default function PrakashGroupPortal() {
     }
   }, [showContact]);
 
-  function validateContact() {
-    const errs = { name: '', phone: '', message: '' };
+  function validateContact() {    const errs = { name: '', phone: '', message: '' };
     if (!contact.name.trim()) errs.name = 'Name is required.';
     if (!contact.phone.trim()) errs.phone = 'Phone is required.';
     else if (!/^[0-9+\- ]{7,15}$/.test(contact.phone)) errs.phone = 'Enter a valid phone number.';
@@ -169,11 +173,6 @@ export default function PrakashGroupPortal() {
     const { name, value } = e.target;
     setContact((s) => ({ ...s, [name]: value }));
     setContactErrors((s) => ({ ...s, [name]: '' }));
-  }
-
-  function closeContact() {
-    setShowContact(false);
-    contactButtonRef.current?.focus();
   }
 
   function closeCareers() {
@@ -207,6 +206,13 @@ export default function PrakashGroupPortal() {
       return;
     }
 
+    // disallow empty files
+    if (file.size === 0) {
+      setCareerErrors((s) => ({ ...s, file: 'Selected file is empty.' }));
+      setCareerProgress(null);
+      return;
+    }
+
     setCareerProgress(0);
     setCareerStatus('Preparing upload...');
 
@@ -217,8 +223,65 @@ export default function PrakashGroupPortal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream' }),
       });
-      const presignJson = await presignRes.json();
-      if (!presignRes.ok || !presignJson.url || !presignJson.key) {
+      const presignJson = await presignRes.json().catch(() => ({}));
+
+      // If S3 not configured, fallback to sending file inline to /api/careers
+      if (!presignRes.ok) {
+        // S3 specifically not configured
+        if (presignJson && presignJson.error && presignJson.error.toLowerCase().includes('s3')) {
+          setCareerStatus('S3 not configured — using fallback upload.');
+
+          // read file as base64
+          const fileData = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              const base = result.split(',')[1];
+              resolve(base);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+
+          // ensure fileData is non-empty (some text files can be zero bytes or read failure)
+          if (!fileData || fileData.length === 0) {
+            setCareerErrors((s) => ({ ...s, file: 'Selected file is empty or could not be read.' }));
+            setCareerProgress(null);
+            return;
+          }
+
+          setCareerStatus('Uploading (fallback)...');
+
+          const submitRes = await fetch('/api/careers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...careerForm, fileName: file.name, fileData, contentType: file.type }),
+          });
+
+          const submitJson = await submitRes.json().catch(() => ({}));
+          if (submitRes.ok) {
+            setCareerProgress(100);
+            setCareerStatus(submitJson.previewUrl ? 'Application sent (preview).' : 'Application submitted.');
+            setTimeout(() => {
+              setCareerForm({ name: '', email: '', phone: '', position: '', message: '' });
+              setCareerFile(null);
+              closeCareers();
+              setCareerProgress(null);
+            }, 1800);
+            return;
+          }
+
+          setCareerStatus(submitJson && submitJson.error ? `Error: ${submitJson.error}` : 'Error submitting application.');
+          setCareerProgress(null);
+          return;
+        }
+
+        setCareerStatus('Upload failed (presign).');
+        setCareerProgress(null);
+        return;
+      }
+
+      if (!presignJson.url || !presignJson.key) {
         setCareerStatus('Upload failed (presign).');
         setCareerProgress(null);
         return;
@@ -310,7 +373,7 @@ export default function PrakashGroupPortal() {
       }
 
       setContactStatus(json && json.error ? `Error: ${json.error}` : 'Error sending message.');
-    } catch (err) {
+    } catch {
       // network or other error — fallback to mailto
       const subject = encodeURIComponent(`Support request from ${contact.name}`);
       const body = encodeURIComponent(`Name: ${contact.name}\nPhone: ${contact.phone}\n\nMessage:\n${contact.message}`);
@@ -409,9 +472,9 @@ export default function PrakashGroupPortal() {
 
             {/* Careers modal */}
             {showCareers && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div className="fixed inset-0 bg-black/40" onClick={closeCareers} aria-hidden="true" />
-                <div role="dialog" aria-modal="true" aria-labelledby="careers-title" className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 z-10">
+                <div role="dialog" aria-modal="true" aria-labelledby="careers-title" className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6 z-10 max-h-[90vh] overflow-y-auto">
                   <button onClick={closeCareers} aria-label="Close" className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">✕</button>
                   <h3 id="careers-title" className="text-lg font-semibold mb-3">Apply — Upload your CV / Resume</h3>
                   <form onSubmit={handleCareerSubmit} className="space-y-3">
@@ -439,7 +502,29 @@ export default function PrakashGroupPortal() {
                     </div>
                     <div>
                       <label className="block text-sm mb-1">CV / Resume <span className="text-red-500">*</span></label>
-                      <input ref={careerFileRef} type="file" onChange={handleCareerFile} className="w-full" />
+                      <div className="mt-2 flex items-start gap-3">
+                        <label htmlFor="career-file" className="inline-flex items-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                          <span className="text-sm font-medium">{careerFile ? careerFile.name : 'Upload CV / Resume'}</span>
+                          <input
+                            id="career-file"
+                            ref={careerFileRef}
+                            type="file"
+                            onChange={handleCareerFile}
+                            accept=".pdf,.doc,.docx,.rtf,.txt"
+                            className="sr-only"
+                          />
+                        </label>
+                        {careerFile && (
+                          <button
+                            type="button"
+                            onClick={() => { setCareerFile(null); if (careerFileRef.current) careerFileRef.current.value = ''; }}
+                            className="text-sm text-gray-500 mt-1"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500 mt-1">Accepted: PDF, DOC, DOCX, RTF, TXT. Max file size 10MB.</div>
                       {careerErrors.file && <div className="text-sm text-red-500 mt-1">{careerErrors.file}</div>}
                     </div>
                     <div className="flex items-center gap-3">
@@ -472,10 +557,8 @@ export default function PrakashGroupPortal() {
                   className="max-h-12 w-auto mx-auto object-contain"
                   onError={(e) => {
                     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='80'><rect width='100%' height='100%' fill='${dark ? '#374151' : '#f3f4f6'}'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='${dark ? '#f9fafb' : '#111827'}' font-family='Arial, sans-serif' font-size='14'>${brand.name.split(' ')[0]}</text></svg>`;
-                    // @ts-ignore
-                    e.currentTarget.onerror = null;
-                    // @ts-ignore
-                    e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+                    (e.currentTarget as HTMLImageElement).onerror = null;
+                    (e.currentTarget as HTMLImageElement).src = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
                   }}
                 />
               </div>

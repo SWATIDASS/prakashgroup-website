@@ -4,8 +4,7 @@ import nodemailer from 'nodemailer';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log('Careers API POST body:', body);
-    const { name, email, phone, position, message, fileKey, fileUrl } = body as {
+    const { name, email, phone, position, message, fileKey, fileUrl, fileName, fileData, contentType } = body as {
       name?: string;
       email?: string;
       phone?: string;
@@ -13,9 +12,14 @@ export async function POST(req: Request) {
       message?: string;
       fileKey?: string;
       fileUrl?: string;
+      // fallback file upload
+      fileName?: string;
+      fileData?: string; // base64
+      contentType?: string;
     };
 
-    if (!name || !email || !fileKey || !fileUrl) {
+    // Require name & email and either S3-supplied file keys or a fallback file payload
+    if (!name || !email || (!(fileKey && fileUrl) && !(fileName && fileData))) {
       return NextResponse.json({ error: 'Missing required fields (name, email, file)' }, { status: 400 });
     }
 
@@ -49,9 +53,18 @@ export async function POST(req: Request) {
     }
 
     const subject = `New career application: ${position || 'Unspecified'}`;
-    const text = `Name: ${name}\nEmail: ${email}\nPhone: ${phone || ''}\nPosition: ${position || ''}\n\nMessage:\n${message || ''}\n\nFile: ${fileUrl}`;
 
-    const info = await transporter.sendMail({ from, to, subject, text });
+    // Build email body and attachments. Prefer S3 fileUrl when available, otherwise attach file bytes from fallback
+    let text = `Name: ${name}\nEmail: ${email}\nPhone: ${phone || ''}\nPosition: ${position || ''}\n\nMessage:\n${message || ''}`;
+    const attachments: { filename: string; content: Buffer; contentType?: string }[] = [];
+    if (fileUrl) {
+      text += `\n\nFile: ${fileUrl}`;
+    } else if (fileName && fileData) {
+      text += `\n\nFile attached: ${fileName}`;
+      attachments.push({ filename: fileName, content: Buffer.from(fileData, 'base64'), contentType: contentType || undefined });
+    }
+
+    const info = await transporter.sendMail({ from, to, subject, text, attachments });
 
     const testPreview = nodemailer.getTestMessageUrl(info);
     if (testPreview) previewUrl = testPreview;

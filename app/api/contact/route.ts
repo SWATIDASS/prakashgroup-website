@@ -4,11 +4,9 @@ import nodemailer from 'nodemailer';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log('Contact API POST body:', body);
     const { name, phone, message } = body as { name?: string; phone?: string; message?: string };
 
     if (!name || !phone || !message) {
-      console.log('Contact API missing fields:', { name, phone, message });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
