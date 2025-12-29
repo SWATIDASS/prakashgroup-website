@@ -398,37 +398,51 @@ export default function PrakashGroupPortal() {
         </div>
       </nav>
 
-      <div className="max-w-5xl mx-auto mb-12 relative">
-        <svg className="pointer-events-none absolute -top-8 -right-24 opacity-20 w-48 h-48" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="g1" x1="0%" x2="100%">
-              <stop offset="0%" stopColor="#a78bfa" />
-              <stop offset="100%" stopColor="#fb7185" />
-            </linearGradient>
-          </defs>
-          <circle cx="80" cy="70" r="80" fill="url(#g1)" />
-        </svg>
+      <div className="max-w-6xl mx-auto mb-16 relative rounded-3xl overflow-hidden">
+  {/* Background gradient */}
+  <div className="absolute inset-0 bg-gradient-to-br from-[#0B1220] via-[#0F172A] to-[#020617]" />
 
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex-1">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">Prakash Group</h1>
-            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 max-w-2xl">Authorized dealerships and trusted services across automobiles, mobility, jewellery, eyewear and packaged water — delivering consistent value to our customers in Bihar.</p>
-            <ul className="mt-4 text-sm text-gray-500 dark:text-gray-400 list-disc list-inside max-w-2xl">
-              <li>Authorized national and international brands</li>
-              <li>Transparent pricing and trusted service</li>
-              <li>Local support across multiple cities</li>
-            </ul>
-            <div className="mt-6 flex gap-3">
-              <a href="#brands" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 transition">Explore Brands</a>
-              <button
-                type="button"
-                ref={contactButtonRef}
-                onClick={() => setShowContact(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 border rounded-md text-indigo-600 bg-white/90 hover:bg-white transition"
-              >
-                Get in touch
-              </button>
-            </div>
+  {/* Accent glow */}
+  <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#C9A24D]/10 rounded-full blur-3xl" />
+
+  <div className="relative z-10 p-10 md:p-14 flex flex-col md:flex-row gap-10 items-center">
+    {/* LEFT CONTENT */}
+    <div className="flex-1">
+      <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight text-white">
+        Prakash Group
+      </h1>
+
+      <div className="mt-4 w-20 h-1 bg-[#C9A24D] rounded-full" />
+
+      <p className="mt-6 text-lg text-slate-300 max-w-2xl">
+        Authorized dealerships and trusted services across automobiles,
+        mobility, jewellery, eyewear and packaged water — delivering
+        consistent value to our customers in Bihar.
+      </p>
+
+      <ul className="mt-6 space-y-2 text-sm text-slate-400 list-disc list-inside max-w-2xl">
+        <li>Authorized national and international brands</li>
+        <li>Transparent pricing and trusted service</li>
+        <li>Local support across multiple cities</li>
+      </ul>
+
+      <div className="mt-8 flex gap-4">
+        <a
+          href="#brands"
+          className="px-6 py-3 rounded-md bg-indigo-600 text-white font-semibold shadow-lg hover:bg-indigo-700 transition"
+        >
+          Explore Brands
+        </a>
+
+        <button
+          ref={contactButtonRef}
+          onClick={() => setShowContact(true)}
+          className="px-6 py-3 rounded-md border border-white/30 text-white font-semibold hover:bg-white/10 transition"
+        >
+          Get in touch
+        </button>
+      </div>
+
 
             {/* Contact form modal */}
             {showContact && (
@@ -549,11 +563,40 @@ export default function PrakashGroupPortal() {
               </div>
             )}
           </div>
-          <div className="w-60 hidden md:block">
-            <img src="/md-vijay-prakash.png" alt="Mr. Vijay Prakash" className="rounded-2xl shadow-lg w-full" />
-          </div>
+          <div className="hidden md:block w-72 lg:w-80 text-center">
+              <img
+                src="/md-vijay-prakash.png"
+                alt="Mr. Vijay Prakash"
+                className="rounded-2xl shadow-xl w-full object-cover"
+              />
+
+              {/* Managing Director text */}
+              <div className="mt-6">
+                <p className="uppercase tracking-[0.3em] text-xs font-semibold text-[#C9A24D]">
+                  Managing Director
+                </p>
+
+                <h3 className="mt-2 text-2xl font-bold text-white">
+                  Mr. Vijay Prakash
+                </h3>
+
+                <div className="mx-auto mt-3 w-16 h-[3px] bg-[#C9A24D] rounded-full"></div>
+              </div>
+            </div>
         </div>
-        <p className="text-center text-gray-600 dark:text-gray-300 max-w-4xl mx-auto mt-8">Built on the pillars of trust, excellence and customer satisfaction, Prakash Group proudly represents leading national brands and delivers quality products and services to thousands of customers every year.</p>
+        <div className="relative z-10 max-w-5xl mx-auto mt-14">
+        <div className="flex items-center justify-center gap-3 px-6 py-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md shadow-lg">
+          <span className="hidden sm:block w-1.5 h-12 bg-[#C9A24D] rounded-full" />
+
+          <p className="text-center text-slate-100 text-base md:text-lg leading-relaxed">
+            Built on the pillars of <span className="text-[#C9A24D] font-semibold">trust</span>,{" "}
+            <span className="text-[#C9A24D] font-semibold">excellence</span> and{" "}
+            <span className="text-[#C9A24D] font-semibold">customer satisfaction</span>,{" "}
+            Prakash Group proudly represents leading national brands and delivers quality
+            products and services to thousands of customers every year.
+          </p>
+        </div>
+</div>
       </div>
       <div id="brands" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {brands.map((brand) => (
@@ -609,7 +652,7 @@ export default function PrakashGroupPortal() {
       </div>
       <footer className="text-center text-sm text-gray-500 mt-16 border-t pt-6">
         <div>© {new Date().getFullYear()} Prakash Group</div>
-        <div className="mt-2"><a href="mailto:swati.das1506@gmail.com" className="text-indigo-600">swati.das1506@gmail.com</a> · <span className="text-gray-400">prakashgroup.in</span></div>
+        <div className="mt-2"><a href="mailto:swati.das1506@gmail.com" className="text-indigo-600"></a> · <span className="text-gray-400">prakashgroup123.in</span></div>
       </footer>
     </div>
   );
